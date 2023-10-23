@@ -16,3 +16,6 @@ __4.__ Configuração do serviço de Load Balancer AWS para a aplicação Wordpr
 * A aplicação Wordpress precisa estar rodando na porta 80 ou 8080.
 
 ## Disposição da Arquitetura Básica
+<img src="/img/arquitetura.jpg" width="750" title="Arquitetura Básica">
+
+## Passos de Execução

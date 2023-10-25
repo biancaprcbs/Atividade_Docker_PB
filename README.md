@@ -74,3 +74,33 @@ Foram criados dois pares de chaves distintos para acesso às instâncias privada
 * `chave_aplicacao.pem`: tipo RSA, chave para o acesso das instâncias privadas.
 
 ### 4. Configuração do Bastion Host
+A configuração do Bastion Host refere-se à execução de uma instância que conta com as seguintes características:
+* Tags de acordo com a utilização (CostCenter e Project);
+* AMI: Amazon Linux 2 AMI (HVM) - Kernel 5.10, SSD Volume Type, 64 bits (x86);
+* Tipo de instância: t2.micro;
+* Par de chaves: chave_execucao.pem;
+* Associação à VPC criada anteriormente, com uma sub-rede pública;
+* Atribuição de IP público habilitado;
+* Grupo de segurança: grupo do Bastion Host criado anteriormente;
+* Armazenamento: 16GB GP2.
+
+Após acessar a instância através do IP público, o par de chaves `chave_aplicacao.pem` foi movido para a instância de forma a garantir o acesso SSH das instâncias privadas pelo Bastion Host.
+
+### 5. Configuração do RDS
+O RDS armazenará os arquivos referentes ao WordPress e a criação do banco de dados contém as seguintes características:
+* Método de criação: padrão;
+* Tipo de mecanismo: MySQL;
+* Modelo: nível gratuito;
+* Definição de um nome para a instância de banco de dados;
+* Definição de nome e senha para o usuário principal;
+* Associação com a VPC criada anteriormente;
+* Associação com o grupo de segurança do RDS criado anteriomente;
+* Associação com a sub-rede `us-east-1a`;
+* Acesso público habilitado;
+* Definição de um nome inicial do banco de dados.
+
+### 6. Configuração do EFS
+O EFS armazenará os arquivos estáticos do WordPress e sua criação contém as seguintes características:
+* Definição de um nome para o sistema de arquivos;
+* Associação com a VPC criada anteriormente;
+* Alteração na seção de Rede do sistema de arquivos para alterar o grupo de segurança específico do EFS criado anteriormente.

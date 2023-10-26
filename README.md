@@ -104,3 +104,67 @@ O EFS armazenará os arquivos estáticos do WordPress e sua criação contém as
 * Definição de um nome para o sistema de arquivos;
 * Associação com a VPC criada anteriormente;
 * Alteração na seção de Rede do sistema de arquivos para alterar o grupo de segurança específico do EFS criado anteriormente.
+
+### 7. Configuração das aplicações
+As aplicações WordPress farão parte de instâncias configuradas com as seguintes características:
+* Tags de acordo com a utilização (CostCenter e Project);
+* AMI: Amazon Linux 2 AMI (HVM) - Kernel 5.10, SSD Volume Type, 64 bits (x86);
+* Tipo de instância: t2.micro;
+* Par de chaves: chave_aplicacao.pem;
+* Associação à VPC criada anteriormente, com uma sub-rede privada;
+* Atribuição de IP público desabilitado;
+* Grupo de segurança: grupo das aplicações criado anteriormente;
+* Armazenamento: 16GB GP2.
+
+Além disso, em Detalhes avançados foram adicionadas as seguintes linhas ao campo __Dados do usuário__ (correspondente ao arquivo `user_data.sh`) visando a instalação e configuração dos serviços necessários ao ambiente:
+* Atualização do sistema e instalação do Docker e Docker Compose
+  ```
+  sudo yum update -y
+  sudo yum install docker -y
+  sudo systemctl start docker
+  sudo systemctl enable docker
+  sudo usermod -aG docker ec2-user
+  sudo curl -L "https://github.com/docker/compose/releases/latest/download/docker-compose-$(uname -s)-$(uname -m)" -o /usr/local/bin/docker-compose
+  sudo chmod +x /usr/local/bin/docker-compose
+  ```
+* Preparação o sistema de arquivos NFS que armazenará os arquivos do WordPress
+  ```
+  sudo yum install nfs-utils -y
+  sudo mkdir /mnt/efs/
+  sudo chmod 777 /mnt/efs/
+  ```
+O script completo `user_data.sh` encontra-se disponível neste repositório.
+
+#### 7.1. Configuração do EFS nas aplicações
+Neste passo, o volume EFS precisa ser anexado à instância EC2 correspondente à aplicação. Dessa forma, no serviço EFS da AWS podemos acessar o sistema de arquivos e seguir os passos:
+* Opção Anexar do sistema de arquivos;
+* Opção Montar via DNS na janela aberta correspondente;
+* Copiar o comando referente ao cliente do NFS e colar no terminal da instância, com as modificações necessárias do caminho para o EFS:
+  ```
+  sudo mount -t nfs4 -o nfsvers=4.1,rsize=1048576,wsize=1048576,hard,timeo=600,retrans=2,noresvport fs-<ID_do_seu_EFS>.efs.us-east-1.amazonaws.com:/ /mnt/efs
+  ```
+*Executar o comando `df -h` para confirmar a montagem.
+
+#### 7.2. Configuração do WordPress nas aplicações utilizando Docker Compose
+Para subir os contêineres responsáveis pela configuração do WordPress podemos utilizar um `docker-compose.yml`. Neste caso, o arquivo foi criado na própria instância através do comando `nano docker-compose.yml` (disponível neste repositório) e apresenta as seguintes características:
+```
+version: '3.3'
+services:
+  wordpress:
+    image: wordpress:latest
+    volumes:
+      - /mnt/efs/wordpress:/var/www/html
+    ports:
+      - 80:80
+    restart: always
+    environment:
+      TZ: America/Sao_Paulo
+      WORDPRESS_DB_HOST: endpoint do RDS
+      WORDPRESS_DB_USER: nome do usuário principal do banco de dados
+      WORDPRESS_DB_PASSWORD: senha do usuário principal do banco de dados
+      WORDPRESS_DB_NAME: nome do banco de dados
+      WORDPRESS_TABLE_CONFIG: wp_
+```
+Com isso, executou-se o comando `docker-compose up -d` para subir os contêineres e depois o comando `docker ps` para confirmar a inicialização do container.
+
+### 8. Configuração do Load Balancer

@@ -168,3 +168,13 @@ services:
 Com isso, executou-se o comando `docker-compose up -d` para subir os contêineres e depois o comando `docker ps` para confirmar a inicialização do container.
 
 ### 8. Configuração do Load Balancer
+O Load Balancer foi criado com as seguintes características:
+* Tipo: Application Load Balancer;
+* Esquema: Voltado para a internet;
+* Tipo de endereço IP: IPv4;
+* Associação com a VPC criada anteriormente e com as sub-redes públicas das duas zonas de disponibilidade disponíveis;
+* Grupo de segurança: grupo do Load Balancer criado anteriormente;
+* Listener: HTTP, na porta 80 e associação com um grupo de destino,
+  * Criação de um grupo de destino (Target Group) com o tipo instância, versão do protocolo HTTP1 e incluindo como pendente as instâncias que são hosts do WordPress.
+
+Com isso, podemos acessar o serviço WordPress através do DNS do Load Balancer, evitando a utilização de um IP público como saída para o serviço.

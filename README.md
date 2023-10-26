@@ -180,5 +180,22 @@ O Load Balancer foi criado com as seguintes características:
 Com isso, podemos acessar o serviço WordPress através do DNS do Load Balancer, evitando a utilização de um IP público como saída para o serviço.
 
 ### 9. Configuração do Modelo de execução do EC2
+Antes de configurar o Auto Scaling, precisamos definir um modelo de execução cujas características serão repassadas para as instâncias criada através do serviço. Com isso, em Modelos de execução no painel EC2 da AWS, as seguintes configurações foram feitas na criação do template:
+* AMI: Amazon Linux 2 AMI (HVM) - Kernel 5.10, SSD Volume Type, 64 bits (x86);
+* Tipo de instância: t2.micro;
+* Par de chaves: chave_aplicacao.pem;
+* Associação à VPC criada anteriormente, com uma sub-rede privada;
+* Grupo de segurança: grupo das aplicações criado anteriormente;
+* Armazenamento: 16GB GP2;
+* Tags de acordo com a utilização (CostCenter e Project).
+
+Além disso, em Detalhes avançados foram adicionadas as seguintes linhas ao campo __Dados do usuário__ (correspondente ao arquivo `user_data.sh`) visando a instalação e configuração dos serviços necessários ao ambiente:
+
+O script acima corresponde à configuração completa de uma instância host do WordPress. Antes disso, todo o processo utilizando o serviço docker-compose tinha sido feito dentro da própria instância, depois de sua criação. Para o uso do Auto Scaling, o script referente ao user_data foi alterado de forma a adicionar esta etapa.
 
 ### 10. Configuração do Auto Scaling
+Para a criação do grupo do Auto Scaling foram consideradas as seguintes características:
+* Modelo de execução: modelo que foi criado anteriormente;
+* Associação com a VPC criada anteriormente e com as sub-redes privadas das zonas de disponibilidade `us-east-1a` e `us-east-1b`;
+* Associação com o Load Balancer criado anteriormente;
+* Tamanho do grupo com capacidade desejada = 2, capacidade mínima = 2 e capacidade máxima = 4;

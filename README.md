@@ -178,3 +178,7 @@ O Load Balancer foi criado com as seguintes características:
   * Criação de um grupo de destino (Target Group) com o tipo instância, versão do protocolo HTTP1 e incluindo como pendente as instâncias que são hosts do WordPress.
 
 Com isso, podemos acessar o serviço WordPress através do DNS do Load Balancer, evitando a utilização de um IP público como saída para o serviço.
+
+### 9. Configuração do Modelo de execução do EC2
+
+### 10. Configuração do Auto Scaling

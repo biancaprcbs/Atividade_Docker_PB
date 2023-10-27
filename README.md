@@ -37,7 +37,7 @@ Os grupos de segurança criados referem-se a cada um dos serviços utilizados, p
   
   | Tipo  | Protocolo | Porta | Origem | Descrição |
   | ----- | --------- | ----- | ------ | --------- |
-  |  SSH  |    TCP    |   22  | MEU IP |    ssh    |
+  |  SSH  |    TCP    |   22  | 0.0.0.0/0 |    ssh    |
 
 * Grupo de segurança do RDS
   
@@ -87,7 +87,7 @@ A configuração do Bastion Host refere-se à execução de uma instância que c
 Após acessar a instância através do IP público, o par de chaves `chave_aplicacao.pem` foi movido para a instância de forma a garantir o acesso SSH das instâncias privadas pelo Bastion Host.
 
 ### 5. Configuração do RDS
-O RDS armazenará os arquivos referentes ao WordPress e a criação do banco de dados contém as seguintes características:
+O RDS possui como objetivo armazenar os arquivos referentes ao WordPress e a criação do banco de dados contém as seguintes características:
 * Método de criação: padrão;
 * Tipo de mecanismo: MySQL;
 * Modelo: nível gratuito;
@@ -99,11 +99,15 @@ O RDS armazenará os arquivos referentes ao WordPress e a criação do banco de 
 * Acesso público habilitado;
 * Definição de um nome inicial do banco de dados.
 
+Assim, o banco de dados MySQL foi criado e seus dados foram utilizados na configuração do container da aplicação.
+
 ### 6. Configuração do EFS
-O EFS armazenará os arquivos estáticos do WordPress e sua criação contém as seguintes características:
+O EFS tem como objeitov armazenar os arquivos estáticos do WordPress e a sua criação contém as seguintes características:
 * Definição de um nome para o sistema de arquivos;
 * Associação com a VPC criada anteriormente;
-* Alteração na seção de Rede do sistema de arquivos para alterar o grupo de segurança específico do EFS criado anteriormente.
+* Alteração na seção de __Rede__ do sistema de arquivos para alterar o grupo de segurança específico do EFS criado anteriormente.
+
+Com isso, o sistema de arquivos fica disponível para uso.
 
 ### 7. Configuração das aplicações
 As aplicações WordPress farão parte de instâncias configuradas com as seguintes características:
@@ -116,7 +120,7 @@ As aplicações WordPress farão parte de instâncias configuradas com as seguin
 * Grupo de segurança: grupo das aplicações criado anteriormente;
 * Armazenamento: 16GB GP2.
 
-Além disso, em Detalhes avançados foram adicionadas as seguintes linhas ao campo __Dados do usuário__ (correspondente ao arquivo `user_data.sh`) visando a instalação e configuração dos serviços necessários ao ambiente:
+Além disso, em __Detalhes avançados__ foram adicionadas as seguintes linhas ao campo __Dados do usuário__ (correspondente ao arquivo `user_data.sh`) visando a instalação e configuração dos serviços necessários ao ambiente:
 * Atualização do sistema e instalação do Docker e Docker Compose
   ```
   sudo yum update -y
@@ -126,10 +130,13 @@ Além disso, em Detalhes avançados foram adicionadas as seguintes linhas ao cam
   sudo usermod -aG docker ec2-user
   sudo curl -L "https://github.com/docker/compose/releases/latest/download/docker-compose-$(uname -s)-$(uname -m)" -o /usr/local/bin/docker-compose
   sudo chmod +x /usr/local/bin/docker-compose
+  sudo mv /usr/local/bin/docker-compose /usr/bin/docker-compose
   ```
 * Preparação o sistema de arquivos NFS que armazenará os arquivos do WordPress
   ```
   sudo yum install nfs-utils -y
+  sudo systemctl start nfs-server
+  sudo systemctl enable nfs-server
   sudo mkdir /mnt/efs/
   sudo chmod 777 /mnt/efs/
   ```
@@ -137,16 +144,16 @@ O script completo `user_data.sh` encontra-se disponível neste repositório.
 
 #### 7.1. Configuração do EFS nas aplicações
 Neste passo, o volume EFS precisa ser anexado à instância EC2 correspondente à aplicação. Dessa forma, no serviço EFS da AWS podemos acessar o sistema de arquivos e seguir os passos:
-* Opção Anexar do sistema de arquivos;
-* Opção Montar via DNS na janela aberta correspondente;
+* Opção __Anexar__ do sistema de arquivos;
+* Opção __Montar via DNS__ na janela aberta correspondente;
 * Copiar o comando referente ao cliente do NFS e colar no terminal da instância, com as modificações necessárias do caminho para o EFS:
   ```
-  sudo mount -t nfs4 -o nfsvers=4.1,rsize=1048576,wsize=1048576,hard,timeo=600,retrans=2,noresvport fs-<ID_do_seu_EFS>.efs.us-east-1.amazonaws.com:/ /mnt/efs
+  sudo mount -t nfs4 -o nfsvers=4.1,rsize=1048576,wsize=1048576,hard,timeo=600,retrans=2,noresvport fs-0e395848c30fa3067.efs.us-east-1.amazonaws.com:/ /mnt/efs
   ```
-*Executar o comando `df -h` para confirmar a montagem.
+* Executar o comando `df -h` para confirmar a montagem.
 
 #### 7.2. Configuração do WordPress nas aplicações utilizando Docker Compose
-Para subir os contêineres responsáveis pela configuração do WordPress podemos utilizar um `docker-compose.yml`. Neste caso, o arquivo foi criado na própria instância através do comando `nano docker-compose.yml` (disponível neste repositório) e apresenta as seguintes características:
+Para subir os contêineres responsáveis pela configuração do WordPress podemos utilizar um arquivo `docker-compose.yaml`. Neste caso, o arquivo (disponível neste repositório) foi criado na própria instância através do comando `nano docker-compose.yml` e apresenta as seguintes características:
 ```
 version: '3.3'
 services:
@@ -180,7 +187,7 @@ O Load Balancer foi criado com as seguintes características:
 Com isso, podemos acessar o serviço WordPress através do DNS do Load Balancer, evitando a utilização de um IP público como saída para o serviço.
 
 ### 9. Configuração do Modelo de execução do EC2
-Antes de configurar o Auto Scaling, precisamos definir um modelo de execução cujas características serão repassadas para as instâncias criada através do serviço. Com isso, em Modelos de execução no painel EC2 da AWS, as seguintes configurações foram feitas na criação do template:
+Antes de configurar o Auto Scaling, precisamos definir um modelo de execução cujas características serão repassadas para as instâncias criada através do serviço. Com isso, em __Modelos de execução__ no painel EC2 da AWS, as seguintes configurações foram feitas na criação do template:
 * AMI: Amazon Linux 2 AMI (HVM) - Kernel 5.10, SSD Volume Type, 64 bits (x86);
 * Tipo de instância: t2.micro;
 * Par de chaves: chave_aplicacao.pem;
@@ -189,7 +196,10 @@ Antes de configurar o Auto Scaling, precisamos definir um modelo de execução c
 * Armazenamento: 16GB GP2;
 * Tags de acordo com a utilização (CostCenter e Project).
 
-Além disso, em Detalhes avançados foram adicionadas as seguintes linhas ao campo __Dados do usuário__ (correspondente ao arquivo `user_data.sh`) visando a instalação e configuração dos serviços necessários ao ambiente:
+Além disso, em __Detalhes avançados__ foram adicionadas as seguintes linhas ao campo __Dados do usuário__ (correspondente ao arquivo `template_user_data.sh`) visando a instalação e configuração dos serviços necessários ao ambiente:
+```
+
+```
 
 O script acima corresponde à configuração completa de uma instância host do WordPress. Antes disso, todo o processo utilizando o serviço docker-compose tinha sido feito dentro da própria instância, depois de sua criação. Para o uso do Auto Scaling, o script referente ao user_data foi alterado de forma a adicionar esta etapa.
 
@@ -199,4 +209,5 @@ Para a criação do grupo do Auto Scaling foram consideradas as seguintes caract
 * Associação com a VPC criada anteriormente e com as sub-redes privadas das zonas de disponibilidade `us-east-1a` e `us-east-1b`;
 * Associação com o Load Balancer e o respectivo grupo de destino criados anteriormente;
 * Tamanho do grupo com capacidade desejada = 2, capacidade mínima = 2 e capacidade máxima = 4.
-Após revisar as informações, o grupo do Auto Scaling é criado com sucesso. Com isso, podemos acompanhar a criação das instâncias requeridas e acessá-las através do DNS do Load Balancer associado, sem a necessidade de IPs públicos como saída para os serviços WordPress.
+
+Após revisar as informações, o grupo do Auto Scaling foi criado com sucesso. Com isso, podemos acompanhar a criação das instâncias requeridas e acessá-las através do DNS do Load Balancer associado, sem a necessidade de IPs públicos como saída para os serviços WordPress.

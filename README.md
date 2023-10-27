@@ -31,6 +31,10 @@ A VPC foi criada de acordo com as seguintes configurações:
 * Criação de um NAT gateway e configuração da sua associação com uma sub-rede pública (feita na zona `us-east-1a`), assim como a associação com um IP elástico;
 * Adição da rota para a internet na tabela de rotas privada através da associação com o NAT gateway criado, garantindo somente o acesso de saída para a internet.
 
+A imagem a seguir ilustra a VPC criada e suas características através do __Mapa de recursos__.
+
+<img src="/img/vpc_config.png" width="800" title="VPC configurada">
+
 ### 2. Configuração dos grupos de segurança
 Os grupos de segurança criados referem-se a cada um dos serviços utilizados, permitindo o acesso específico às portas de entrada de acordo com as seguintes configurações:
 * Grupo de segurança do Bastion Host
@@ -146,9 +150,10 @@ O script completo `user_data.sh` encontra-se disponível neste repositório.
 Neste passo, o volume EFS precisa ser anexado à instância EC2 correspondente à aplicação. Dessa forma, no serviço EFS da AWS podemos acessar o sistema de arquivos e seguir os passos:
 * Opção __Anexar__ do sistema de arquivos;
 * Opção __Montar via DNS__ na janela aberta correspondente;
-* Copiar o comando referente ao cliente do NFS e colar no terminal da instância, com as modificações necessárias do caminho para o EFS:
+* Copiar o comando referente ao cliente do NFS e colar no terminal da instância, com as modificações necessárias do caminho para o EFS e sua montagem automatizada:
   ```
-  sudo mount -t nfs4 -o nfsvers=4.1,rsize=1048576,wsize=1048576,hard,timeo=600,retrans=2,noresvport fs-0e395848c30fa3067.efs.us-east-1.amazonaws.com:/ /mnt/efs
+  sudo mount -t nfs4 -o nfsvers=4.1,rsize=1048576,wsize=1048576,hard,timeo=600,retrans=2,noresvport <NOME_DE_DNS_DO_EFS>.efs.us-east-1.amazonaws.com:/ /mnt/efs
+  echo "<NOME_DE_DNS_DO_EFS>.efs.us-east-1.amazonaws.com:/ /mnt/efs nfs defaults 0 0" | sudo tee -a /etc/fstab
   ```
 * Executar o comando `df -h` para confirmar a montagem.
 
@@ -198,7 +203,31 @@ Antes de configurar o Auto Scaling, precisamos definir um modelo de execução c
 
 Além disso, em __Detalhes avançados__ foram adicionadas as seguintes linhas ao campo __Dados do usuário__ (correspondente ao arquivo `template_user_data.sh`) visando a instalação e configuração dos serviços necessários ao ambiente:
 ```
+#!/bin/bash
 
+sudo yum update -y
+
+# instalação docker e docker compose
+sudo yum install docker -y
+sudo systemctl start docker
+sudo systemctl enable docker
+sudo usermod -aG docker ec2-user
+sudo curl -L "https://github.com/docker/compose/releases/latest/download/docker-compose-$(uname -s)-$(uname -m)" -o /usr/local/bin/docker-compose
+sudo chmod +x /usr/local/bin/docker-compose
+sudo mv /usr/local/bin/docker-compose /usr/bin/docker-compose
+
+# configuração do efs
+sudo yum install nfs-utils -y
+sudo systemctl start nfs-server
+sudo systemctl enable nfs-server
+sudo mkdir /mnt/efs/
+sudo chmod 777 /mnt/efs/
+sudo mount -t nfs4 -o nfsvers=4.1,rsize=1048576,wsize=1048576,hard,timeo=600,retrans=2,noresvport <NOME_DE_DNS_DO_EFS>.efs.us-east-1.amazonaws.com:/ /mnt/efs
+echo "<NOME_DE_DNS_DO_EFS>.efs.us-east-1.amazonaws.com:/ /mnt/efs nfs defaults 0 0" | sudo tee -a /etc/fstab
+
+# configuração do wordpress com docker-compose
+curl -sL "https://raw.githubusercontent.com/biancaprcbs/Atividade_Docker_PB/main/docker-compose.yaml" --output "/home/ec2-user/docker-compose.yaml"
+docker-compose up -d
 ```
 
 O script acima corresponde à configuração completa de uma instância host do WordPress. Antes disso, todo o processo utilizando o serviço docker-compose tinha sido feito dentro da própria instância, depois de sua criação. Para o uso do Auto Scaling, o script referente ao user_data foi alterado de forma a adicionar esta etapa.

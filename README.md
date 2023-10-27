@@ -197,5 +197,6 @@ O script acima corresponde à configuração completa de uma instância host do 
 Para a criação do grupo do Auto Scaling foram consideradas as seguintes características:
 * Modelo de execução: modelo que foi criado anteriormente;
 * Associação com a VPC criada anteriormente e com as sub-redes privadas das zonas de disponibilidade `us-east-1a` e `us-east-1b`;
-* Associação com o Load Balancer criado anteriormente;
-* Tamanho do grupo com capacidade desejada = 2, capacidade mínima = 2 e capacidade máxima = 4;
+* Associação com o Load Balancer e o respectivo grupo de destino criados anteriormente;
+* Tamanho do grupo com capacidade desejada = 2, capacidade mínima = 2 e capacidade máxima = 4.
+Após revisar as informações, o grupo do Auto Scaling é criado com sucesso. Com isso, podemos acompanhar a criação das instâncias requeridas e acessá-las através do DNS do Load Balancer associado, sem a necessidade de IPs públicos como saída para os serviços WordPress.

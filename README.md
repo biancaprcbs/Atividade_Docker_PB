@@ -106,7 +106,7 @@ O RDS possui como objetivo armazenar os arquivos referentes ao WordPress e a cri
 Assim, o banco de dados MySQL foi criado e seus dados foram utilizados na configuração do container da aplicação.
 
 ### 6. Configuração do EFS
-O EFS tem como objeitov armazenar os arquivos estáticos do WordPress e a sua criação contém as seguintes características:
+O EFS tem como objeito armazenar os arquivos estáticos do WordPress e a sua criação contém as seguintes características:
 * Definição de um nome para o sistema de arquivos;
 * Associação com a VPC criada anteriormente;
 * Alteração na seção de __Rede__ do sistema de arquivos para alterar o grupo de segurança específico do EFS criado anteriormente.
@@ -222,11 +222,13 @@ sudo systemctl start nfs-server
 sudo systemctl enable nfs-server
 sudo mkdir /mnt/efs/
 sudo chmod 777 /mnt/efs/
-sudo mount -t nfs4 -o nfsvers=4.1,rsize=1048576,wsize=1048576,hard,timeo=600,retrans=2,noresvport <NOME_DE_DNS_DO_EFS>.efs.us-east-1.amazonaws.com:/ /mnt/efs
-echo "<NOME_DE_DNS_DO_EFS>.efs.us-east-1.amazonaws.com:/ /mnt/efs nfs defaults 0 0" | sudo tee -a /etc/fstab
+sudo mount -t nfs4 -o nfsvers=4.1,rsize=1048576,wsize=1048576,hard,timeo=600,retrans=2,noresvport fs-0e395848c30fa3067.efs.us-east-1.amazonaws.com:/ /mnt/efs
+sudo chown ec2-user:ec2-user /mnt/efs
+echo "fs-0e395848c30fa3067.efs.us-east-1.amazonaws.com:/ /mnt/efs nfs defaults 0 0" | sudo tee -a /etc/fstab
 
 # configuração do wordpress com docker-compose
 curl -sL "https://raw.githubusercontent.com/biancaprcbs/Atividade_Docker_PB/main/docker-compose.yaml" --output "/home/ec2-user/docker-compose.yaml"
+cd /home/ec2-user
 docker-compose up -d
 ```
 
@@ -239,4 +241,4 @@ Para a criação do grupo do Auto Scaling foram consideradas as seguintes caract
 * Associação com o Load Balancer e o respectivo grupo de destino criados anteriormente;
 * Tamanho do grupo com capacidade desejada = 2, capacidade mínima = 2 e capacidade máxima = 4.
 
-Após revisar as informações, o grupo do Auto Scaling foi criado com sucesso. Com isso, podemos acompanhar a criação das instâncias requeridas e acessá-las através do DNS do Load Balancer associado, sem a necessidade de IPs públicos como saída para os serviços WordPress.
+Após revisar as informações, o grupo do Auto Scaling foi criado. Com isso, podemos acompanhar a criação das instâncias requeridas e acessá-las através do DNS do Load Balancer associado, sem a necessidade de IPs públicos como saída para os serviços WordPress.
